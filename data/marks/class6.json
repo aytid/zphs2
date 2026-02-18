@@ -1,1 +1,12 @@
-{}
+{
+  "FA1": {
+    "STU1771411552716": {
+      "Telugu": 90,
+      "Hindi": 99,
+      "English": 98,
+      "Maths": 89,
+      "Science": 100,
+      "Social": 98
+    }
+  }
+}
