@@ -1033,9 +1033,9 @@
         // Global State
         let currentUser = null;
         let githubConfig = {
-            token: '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',
-            owner: 'aytid',
-            repo: 'zphs2'
+            token: localStorage.getItem('githubToken') || '',
+            owner: localStorage.getItem('repoOwner') || '',
+            repo: localStorage.getItem('repoName') || ''
         };
 
         // Initialize
@@ -1587,6 +1587,623 @@
                 await githubRequest('data/teachers.json', 'PUT', defaultTeachers);
 
                 // Update users.json
+                const users = await githubRequest('data/users.json') || { students: [], teachers: [], admins: [{ username: 'admin', password: 'admin123', name: 'Administrator' }] };
+                defaultTeachers.forEach(t => {
+                    users.teachers.push({ username: t.username, password: t.password, name: t.name });
+                });
+                await githubRequest('data/users.json', 'PUT', users);
+            }
+        }
+
+        // Close modals on outside click
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('active');
+            }
+        }
+    </script>
+</body>
+</html>
+                    await fetch(url, { headers });
+                    if (response.status === 404) return null;
+                } else {
+                    const body = {
+                        message: 'Update via School Management System',
+                        content: data ? btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2)))) : null
+                    };
+
+                    const getResponse = await fetch(url, { headers });
+                    if (getResponse.status === 200) {
+                        const fileData = await getResponse.json();
+                        body.sha = fileData.sha;
+                    }
+
+                    response = await fetch(url, {
+                        method: 'PUT',
+                        headers,
+                        body: JSON.stringify(body)
+                    });
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                if (method === 'GET') {
+                    const result = await response.json();
+                    if (result.content) {
+                        return JSON.parse(decodeURIComponent(escape(atob(result.content))));
+                    }
+                    return result;
+                }
+                return true;
+            } catch (error) {
+                console.error('GitHub API Error:', error);
+                showMessage(`Error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        // Authentication
+        async function handleLogin(e) {
+            e.preventDefault();
+            const type = document.getElementById('loginType').value;
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            const users = await githubRequest('data/users.json') || { students: [], teachers: [], admins: [] };
+
+            let user = null;
+            if (type === 'student') {
+                user = users.students.find(s => s.username === username && s.password === password);
+            } else if (type === 'teacher') {
+                user = users.teachers.find(t => t.username === username && t.password === password);
+            } else if (type === 'admin') {
+                user = users.admins.find(a => a.username === username && a.password === password);
+            }
+
+            if (user) {
+                currentUser = { ...user, type };
+                updateAuthUI();
+                closeLoginModal();
+                showMessage(`Welcome, ${user.name}!`, 'success');
+
+                if (type === 'teacher' || type === 'admin') {
+                    document.getElementById('addStudentBtn').style.display = 'inline-flex';
+                    document.getElementById('addTeacherBtn').style.display = 'inline-flex';
+                    document.getElementById('enterMarksBtn').style.display = 'inline-flex';
+                }
+
+                if (type === 'admin') {
+                    document.getElementById('adminDashboard').classList.remove('hidden');
+                }
+            } else {
+                showMessage('Invalid credentials', 'error');
+            }
+        }
+
+        function updateAuthUI() {
+            const authSection = document.getElementById('authSection');
+            if (currentUser) {
+                authSection.innerHTML = `
+                    <div class="user-info">
+                        <i class="fas fa-user-circle"></i>
+                        <span>${currentUser.name}</span>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                `;
+            } else {
+                authSection.innerHTML = `
+                    <button class="btn btn-primary" onclick="openLoginModal()">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </button>
+                `;
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            updateAuthUI();
+            document.getElementById('addStudentBtn').style.display = 'none';
+            document.getElementById('addTeacherBtn').style.display = 'none';
+            document.getElementById('enterMarksBtn').style.display = 'none';
+            document.getElementById('adminDashboard').classList.add('hidden');
+            showMessage('Logged out successfully', 'success');
+        }
+
+        // Student Management
+        async function loadStudents() {
+            const classFilter = document.getElementById('studentClassFilter').value;
+            const students = await githubRequest('data/students.json') || [];
+
+            const tbody = document.getElementById('studentsTableBody');
+            tbody.innerHTML = '';
+
+            const filteredStudents = classFilter 
+                ? students.filter(s => s.class === classFilter)
+                : students;
+
+            if (filteredStudents.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px;">
+                            <div class="empty-state">
+                                <i class="fas fa-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+                                <p>No students found</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            filteredStudents.forEach(student => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td><span class="badge badge-primary">${student.id}</span></td>
+                    <td><strong>${student.name}</strong></td>
+                    <td>Class ${student.class}</td>
+                    <td>${student.section}</td>
+                    <td>${student.rollNo}</td>
+                    <td>
+                        ${currentUser && (currentUser.type === 'teacher' || currentUser.type === 'admin') ? `
+                            <button class="btn btn-primary btn-sm" onclick="editStudent('${student.id}')" style="margin-right: 5px;">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteStudent('${student.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        ` : '<span class="badge badge-success">Active</span>'}
+                    </td>
+                `;
+            });
+        }
+
+        async function saveStudent(e) {
+            e.preventDefault();
+            const students = await githubRequest('data/students.json') || [];
+
+            const studentData = {
+                id: document.getElementById('studentId').value || 'STU' + Date.now(),
+                name: document.getElementById('studentName').value,
+                class: document.getElementById('studentClass').value,
+                section: document.getElementById('studentSection').value.toUpperCase(),
+                rollNo: document.getElementById('studentRoll').value,
+                dob: document.getElementById('studentDOB').value,
+                parent: document.getElementById('studentParent').value,
+                contact: document.getElementById('studentContact').value
+            };
+
+            const existingIndex = students.findIndex(s => s.id === studentData.id);
+            if (existingIndex >= 0) {
+                students[existingIndex] = studentData;
+            } else {
+                students.push(studentData);
+            }
+
+            await githubRequest('data/students.json', 'PUT', students);
+            closeStudentModal();
+            loadStudents();
+            showMessage('Student saved successfully', 'success');
+        }
+
+        function editStudent(id) {
+            githubRequest('data/students.json').then(students => {
+                const student = students.find(s => s.id === id);
+                if (student) {
+                    document.getElementById('studentId').value = student.id;
+                    document.getElementById('studentName').value = student.name;
+                    document.getElementById('studentClass').value = student.class;
+                    document.getElementById('studentSection').value = student.section;
+                    document.getElementById('studentRoll').value = student.rollNo;
+                    document.getElementById('studentDOB').value = student.dob || '';
+                    document.getElementById('studentParent').value = student.parent || '';
+                    document.getElementById('studentContact').value = student.contact || '';
+                    document.getElementById('studentModalTitle').innerHTML = '<i class="fas fa-user-edit"></i> Edit Student';
+                    openStudentModal();
+                }
+            });
+        }
+
+        async function deleteStudent(id) {
+            if (!confirm('Are you sure you want to delete this student?')) return;
+
+            let students = await githubRequest('data/students.json') || [];
+            students = students.filter(s => s.id !== id);
+
+            await githubRequest('data/students.json', 'PUT', students);
+            loadStudents();
+            showMessage('Student deleted successfully', 'success');
+        }
+
+        // Teacher Management
+        async function loadTeachers() {
+            const teachers = await githubRequest('data/teachers.json') || [];
+            const grid = document.getElementById('teachersGrid');
+            grid.innerHTML = '';
+
+            if (teachers.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        <h3>No teachers found</h3>
+                        <p>Add teachers to display them here</p>
+                    </div>
+                `;
+                return;
+            }
+
+            teachers.forEach(teacher => {
+                const card = document.createElement('div');
+                card.className = 'teacher-card';
+                card.innerHTML = `
+                    <div class="teacher-avatar">${teacher.name.charAt(0)}</div>
+                    <h3>${teacher.name}</h3>
+                    <div class="teacher-role">${teacher.designation}</div>
+                    <div class="teacher-qual">${teacher.qualifications}</div>
+                    ${teacher.subjects ? `<div style="margin-top: 8px; font-size: 0.85rem; color: var(--primary);"><i class="fas fa-book"></i> ${teacher.subjects}</div>` : ''}
+                    ${currentUser && currentUser.type === 'admin' ? `
+                        <div class="teacher-actions">
+                            <button class="btn btn-primary btn-sm" onclick="editTeacher('${teacher.id}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteTeacher('${teacher.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    ` : ''}
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        async function saveTeacher(e) {
+            e.preventDefault();
+            const teachers = await githubRequest('data/teachers.json') || [];
+
+            const teacherData = {
+                id: document.getElementById('teacherId').value || 'TCH' + Date.now(),
+                name: document.getElementById('teacherName').value,
+                designation: document.getElementById('teacherDesignation').value,
+                qualifications: document.getElementById('teacherQualifications').value,
+                username: document.getElementById('teacherUsername').value,
+                password: document.getElementById('teacherPassword').value,
+                subjects: document.getElementById('teacherSubjects').value
+            };
+
+            const existingIndex = teachers.findIndex(t => t.id === teacherData.id);
+            if (existingIndex >= 0) {
+                teachers[existingIndex] = teacherData;
+            } else {
+                teachers.push(teacherData);
+            }
+
+            await githubRequest('data/teachers.json', 'PUT', teachers);
+
+            const users = await githubRequest('data/users.json') || { students: [], teachers: [], admins: [] };
+            const userIndex = users.teachers.findIndex(t => t.username === teacherData.username);
+            if (userIndex >= 0) {
+                users.teachers[userIndex] = { username: teacherData.username, password: teacherData.password, name: teacherData.name };
+            } else {
+                users.teachers.push({ username: teacherData.username, password: teacherData.password, name: teacherData.name });
+            }
+            await githubRequest('data/users.json', 'PUT', users);
+
+            closeTeacherModal();
+            loadTeachers();
+            showMessage('Teacher saved successfully', 'success');
+        }
+
+        function editTeacher(id) {
+            githubRequest('data/teachers.json').then(teachers => {
+                const teacher = teachers.find(t => t.id === id);
+                if (teacher) {
+                    document.getElementById('teacherId').value = teacher.id;
+                    document.getElementById('teacherName').value = teacher.name;
+                    document.getElementById('teacherDesignation').value = teacher.designation;
+                    document.getElementById('teacherQualifications').value = teacher.qualifications;
+                    document.getElementById('teacherUsername').value = teacher.username;
+                    document.getElementById('teacherPassword').value = teacher.password;
+                    document.getElementById('teacherSubjects').value = teacher.subjects || '';
+                    document.getElementById('teacherModalTitle').innerHTML = '<i class="fas fa-user-edit"></i> Edit Teacher';
+                    openTeacherModal();
+                }
+            });
+        }
+
+        async function deleteTeacher(id) {
+            if (!confirm('Are you sure you want to delete this teacher?')) return;
+
+            let teachers = await githubRequest('data/teachers.json') || [];
+            teachers = teachers.filter(t => t.id !== id);
+
+            await githubRequest('data/teachers.json', 'PUT', teachers);
+            loadTeachers();
+            showMessage('Teacher deleted successfully', 'success');
+        }
+
+        // Marks Management
+        function getSubjectsForClass(classNum) {
+            const num = parseInt(classNum);
+            if (num <= 7) {
+                return ['Telugu', 'Hindi', 'English', 'Maths', 'Science', 'Social'];
+            } else {
+                return ['Telugu', 'Hindi', 'English', 'Maths', 'Physics', 'Biology', 'Social'];
+            }
+        }
+
+        function getMaxMarks(examType) {
+            return examType.startsWith('FA') ? 20 : 100;
+        }
+
+        async function loadMarks() {
+            const classNum = document.getElementById('marksClass').value;
+            const exam = document.getElementById('marksExam').value;
+
+            if (!classNum || !exam) {
+                showMessage('Please select both class and exam', 'error');
+                return;
+            }
+
+            const maxMarks = getMaxMarks(exam);
+            const marksData = await githubRequest(`data/marks/class${classNum}.json`) || {};
+            const examMarks = marksData[exam] || {};
+            const students = await githubRequest('data/students.json') || [];
+            const classStudents = students.filter(s => s.class === classNum);
+            const subjects = getSubjectsForClass(classNum);
+
+            let html = `
+                <div style="margin-bottom: 16px; padding: 12px; background: #f0f9ff; border-radius: 8px; color: #0369a1; font-weight: 600;">
+                    <i class="fas fa-info-circle"></i> Showing marks for ${exam} (Max: ${maxMarks} marks)
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            ${subjects.map(sub => `<th>${sub}</th>`).join('')}
+                            <th>Total</th>
+                            <th>%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            classStudents.forEach(student => {
+                const studentMarks = examMarks[student.id] || {};
+                let total = 0;
+                let count = 0;
+
+                html += `<tr><td><strong>${student.name}</strong><br><small>Roll: ${student.rollNo}</small></td>`;
+                subjects.forEach(sub => {
+                    const mark = studentMarks[sub];
+                    if (mark !== undefined && mark !== null) {
+                        total += parseInt(mark);
+                        count++;
+                        const percentage = (mark / maxMarks) * 100;
+                        const color = percentage >= 80 ? 'var(--success)' : percentage >= 60 ? 'var(--warning)' : 'var(--danger)';
+                        html += `<td style="color: ${color}; font-weight: 600;">${mark}</td>`;
+                    } else {
+                        html += `<td style="color: #cbd5e1;">-</td>`;
+                    }
+                });
+
+                const percentage = count > 0 ? ((total / (count * maxMarks)) * 100).toFixed(1) : '-';
+                html += `
+                    <td style="font-weight: 700;">${count > 0 ? total : '-'}</td>
+                    <td style="font-weight: 700; color: var(--primary);">${percentage !== '-' ? percentage + '%' : '-'}</td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('marksDisplay').innerHTML = html;
+        }
+
+        function updateMaxMarksDisplay() {
+            const exam = document.getElementById('marksEntryExam').value;
+            if (exam) {
+                const maxMarks = getMaxMarks(exam);
+                document.getElementById('currentExamInfo').textContent = exam;
+                document.getElementById('maxMarksInfo').textContent = maxMarks;
+            }
+        }
+
+        async function openMarksEntryModal() {
+            if (!currentUser || (currentUser.type !== 'teacher' && currentUser.type !== 'admin')) {
+                showMessage('Only teachers can enter marks', 'error');
+                return;
+            }
+            document.getElementById('marksModal').classList.add('active');
+            updateMaxMarksDisplay();
+        }
+
+        async function updateMarksEntrySubjects() {
+            const classNum = document.getElementById('marksEntryClass').value;
+            const exam = document.getElementById('marksEntryExam').value;
+            const studentSelect = document.getElementById('marksEntryStudent');
+
+            if (classNum && exam) {
+                const students = await githubRequest('data/students.json') || [];
+                const classStudents = students.filter(s => s.class === classNum);
+                studentSelect.innerHTML = '<option value="">Select Student</option>';
+                classStudents.forEach(s => {
+                    studentSelect.innerHTML += `<option value="${s.id}">${s.name} (Roll: ${s.rollNo})</option>`;
+                });
+
+                const subjects = getSubjectsForClass(classNum);
+                const maxMarks = getMaxMarks(exam);
+                const grid = document.getElementById('marksEntryGrid');
+                grid.innerHTML = '';
+                subjects.forEach(sub => {
+                    grid.innerHTML += `
+                        <div class="mark-input">
+                            <label>${sub}</label>
+                            <input type="number" id="mark_${sub}" min="0" max="${maxMarks}" placeholder="0-${maxMarks}">
+                            <div class="max-marks">Max: ${maxMarks}</div>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        async function saveMarks(e) {
+            e.preventDefault();
+            const classNum = document.getElementById('marksEntryClass').value;
+            const exam = document.getElementById('marksEntryExam').value;
+            const studentId = document.getElementById('marksEntryStudent').value;
+
+            if (!classNum || !exam || !studentId) {
+                showMessage('Please fill all fields', 'error');
+                return;
+            }
+
+            const maxMarks = getMaxMarks(exam);
+            const marksData = await githubRequest(`data/marks/class${classNum}.json`) || {};
+            if (!marksData[exam]) marksData[exam] = {};
+            if (!marksData[exam][studentId]) marksData[exam][studentId] = {};
+
+            const subjects = getSubjectsForClass(classNum);
+            let hasError = false;
+            subjects.forEach(sub => {
+                const markInput = document.getElementById(`mark_${sub}`);
+                const mark = markInput.value;
+                if (mark !== '' && mark !== null) {
+                    const numMark = parseInt(mark);
+                    if (numMark < 0 || numMark > maxMarks) {
+                        showMessage(`${sub} marks must be between 0 and ${maxMarks}`, 'error');
+                        hasError = true;
+                        return;
+                    }
+                    marksData[exam][studentId][sub] = numMark;
+                }
+            });
+
+            if (hasError) return;
+
+            await githubRequest(`data/marks/class${classNum}.json`, 'PUT', marksData);
+            closeMarksModal();
+            showMessage('Marks saved successfully', 'success');
+
+            // Refresh marks display if same class/exam is selected
+            if (document.getElementById('marksClass').value === classNum && 
+                document.getElementById('marksExam').value === exam) {
+                loadMarks();
+            }
+        }
+
+        // GitHub Configuration
+        function saveGitHubConfig() {
+            githubConfig.token = document.getElementById('githubToken').value;
+            githubConfig.owner = document.getElementById('repoOwner').value;
+            githubConfig.repo = document.getElementById('repoName').value;
+
+            localStorage.setItem('githubToken', githubConfig.token);
+            localStorage.setItem('repoOwner', githubConfig.owner);
+            localStorage.setItem('repoName', githubConfig.repo);
+
+            showMessage('Configuration saved successfully', 'success');
+        }
+
+        function loadGitHubConfig() {
+            document.getElementById('githubToken').value = githubConfig.token;
+            document.getElementById('repoOwner').value = githubConfig.owner;
+            document.getElementById('repoName').value = githubConfig.repo;
+        }
+
+        async function initializeGitHubFiles() {
+            const defaultUsers = {
+                students: [],
+                teachers: [],
+                admins: [{ username: 'admin', password: 'admin123', name: 'Administrator' }]
+            };
+
+            await githubRequest('data/users.json', 'PUT', defaultUsers);
+            await githubRequest('data/students.json', 'PUT', []);
+            await githubRequest('data/teachers.json', 'PUT', []);
+
+            for (let i = 6; i <= 10; i++) {
+                await githubRequest(`data/marks/class${i}.json`, 'PUT', {});
+            }
+
+            showMessage('All files initialized successfully', 'success');
+        }
+
+        // Utility Functions
+        function showMessage(msg, type) {
+            const box = document.getElementById('messageBox');
+            box.innerHTML = type === 'success' 
+                ? `<i class="fas fa-check-circle"></i> ${msg}`
+                : `<i class="fas fa-exclamation-circle"></i> ${msg}`;
+            box.className = `message ${type}`;
+            setTimeout(() => box.className = 'message', 4000);
+        }
+
+        function openLoginModal() {
+            document.getElementById('loginModal').classList.add('active');
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.remove('active');
+        }
+
+        function openStudentModal() {
+            if (!currentUser || (currentUser.type !== 'teacher' && currentUser.type !== 'admin')) {
+                showMessage('Please login as teacher or admin', 'error');
+                return;
+            }
+            document.getElementById('studentModal').classList.add('active');
+        }
+
+        function closeStudentModal() {
+            document.getElementById('studentModal').classList.remove('active');
+            document.getElementById('studentModalTitle').innerHTML = '<i class="fas fa-user-plus"></i> Add Student';
+            document.querySelector('#studentModal form').reset();
+        }
+
+        function openTeacherModal() {
+            if (!currentUser || currentUser.type !== 'admin') {
+                showMessage('Only admin can add teachers', 'error');
+                return;
+            }
+            document.getElementById('teacherModal').classList.add('active');
+        }
+
+        function closeTeacherModal() {
+            document.getElementById('teacherModal').classList.remove('active');
+            document.getElementById('teacherModalTitle').innerHTML = '<i class="fas fa-user-tie"></i> Add Teacher';
+            document.querySelector('#teacherModal form').reset();
+        }
+
+        function closeMarksModal() {
+            document.getElementById('marksModal').classList.remove('active');
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        async function loadInitialData() {
+            const teachers = await githubRequest('data/teachers.json');
+            if (!teachers || teachers.length === 0) {
+                const defaultTeachers = [
+                    { id: 'TCH001', name: 'Sri Moturi Ravindhar', designation: 'GHM-II', qualifications: 'M.A.(Economics), B.Ed.', username: 'ravindhar', password: 'teacher123', subjects: 'Economics' },
+                    { id: 'TCH002', name: 'Sri Chowdarapu Ramprasad', designation: 'SA(Maths)', qualifications: 'M.A.(Economics), B.Ed., M.Sc(Maths), M.Ed., M.Phil.', username: 'ramprasad', password: 'teacher123', subjects: 'Mathematics' },
+                    { id: 'TCH003', name: 'Sri Thirumala Sadashiv', designation: 'SA(Social)', qualifications: 'M.A(History), B.Ed.', username: 'sadashiv', password: 'teacher123', subjects: 'Social Studies' },
+                    { id: 'TCH004', name: 'Sri Nalla Rajaiah', designation: 'SA(Maths)', qualifications: 'M.Sc(Maths), B.Ed.', username: 'rajaiah', password: 'teacher123', subjects: 'Mathematics' },
+                    { id: 'TCH005', name: 'Sri Mittapally Rajashekar', designation: 'SA(Bio-Science)', qualifications: 'M.Sc.(Botony), B.Ed.', username: 'rajashekar', password: 'teacher123', subjects: 'Biology' },
+                    { id: 'TCH006', name: 'Srimati Guddeti Sumalatha', designation: 'SA(English)', qualifications: 'M.A(English), B.Ed.', username: 'sumalatha', password: 'teacher123', subjects: 'English' },
+                    { id: 'TCH007', name: 'Sri Mutyapu Hariprasad', designation: 'SA(Physical Science)', qualifications: 'M.Sc.(Maths), B.Ed.', username: 'hariprasad', password: 'teacher123', subjects: 'Physics' },
+                    { id: 'TCH008', name: 'Srimati Mothukuri Krishnaveni', designation: 'SA(Telugu)', qualifications: 'M.A(Telugu), B.Ed.', username: 'krishnaveni', password: 'teacher123', subjects: 'Telugu' },
+                    { id: 'TCH009', name: 'Srimati Takur Sujatha Kumari', designation: 'L.P(Hindi)', qualifications: 'B.A., B.Ed., H.P.T', username: 'sujatha', password: 'teacher123', subjects: 'Hindi' },
+                    { id: 'TCH010', name: 'Sri Gouti Ravindhar', designation: 'P.E.T', qualifications: 'B.Com., MP.Ed., M.B.A', username: 'gouti', password: 'teacher123', subjects: 'Physical Education' },
+                    { id: 'TCH011', name: 'Srimati Rafeedha Begum', designation: 'PTI(Craft)', qualifications: 'B.A, TTTC', username: 'rafeedha', password: 'teacher123', subjects: 'Crafts' }
+                ];
+                await githubRequest('data/teachers.json', 'PUT', defaultTeachers);
+
                 const users = await githubRequest('data/users.json') || { students: [], teachers: [], admins: [{ username: 'admin', password: 'admin123', name: 'Administrator' }] };
                 defaultTeachers.forEach(t => {
                     users.teachers.push({ username: t.username, password: t.password, name: t.name });
