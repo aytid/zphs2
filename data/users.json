@@ -1,0 +1,67 @@
+{
+  "students": [],
+  "teachers": [
+    {
+      "username": "ravindhar",
+      "password": "teacher123",
+      "name": "Sri Moturi Ravindhar"
+    },
+    {
+      "username": "ramprasad",
+      "password": "teacher123",
+      "name": "Sri Chowdarapu Ramprasad"
+    },
+    {
+      "username": "sadashiv",
+      "password": "teacher123",
+      "name": "Sri Thirumala Sadashiv"
+    },
+    {
+      "username": "rajaiah",
+      "password": "teacher123",
+      "name": "Sri Nalla Rajaiah"
+    },
+    {
+      "username": "rajashekar",
+      "password": "teacher123",
+      "name": "Sri Mittapally Rajashekar"
+    },
+    {
+      "username": "sumalatha",
+      "password": "teacher123",
+      "name": "Srimati Guddeti Sumalatha"
+    },
+    {
+      "username": "hariprasad",
+      "password": "teacher123",
+      "name": "Sri Mutyapu Hariprasad"
+    },
+    {
+      "username": "krishnaveni",
+      "password": "teacher123",
+      "name": "Srimati Mothukuri Krishnaveni"
+    },
+    {
+      "username": "sujatha",
+      "password": "teacher123",
+      "name": "Srimati Takur Sujatha Kumari"
+    },
+    {
+      "username": "gouti",
+      "password": "teacher123",
+      "name": "Sri Gouti Ravindhar"
+    },
+    {
+      "username": "rafeedha",
+      "password": "teacher123",
+      "name": "Srimati Rafeedha Begum"
+    }
+  ],
+  "admins": [
+    {
+      "username": "admin",
+      "password": "admin123",
+      "name": "Administrator"
+    }
+  ]
+}
