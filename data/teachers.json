@@ -1,0 +1,101 @@
+[
+  {
+    "id": "TCH001",
+    "name": "Sri Moturi Ravindhar",
+    "designation": "GHM-II",
+    "qualifications": "M.A.(Economics), B.Ed.",
+    "username": "ravindhar",
+    "password": "teacher123",
+    "subjects": "Economics"
+  },
+  {
+    "id": "TCH002",
+    "name": "Sri Chowdarapu Ramprasad",
+    "designation": "SA(Maths)",
+    "qualifications": "M.A.(Economics), B.Ed., M.Sc(Maths), M.Ed., M.Phil.",
+    "username": "ramprasad",
+    "password": "teacher123",
+    "subjects": "Mathematics"
+  },
+  {
+    "id": "TCH003",
+    "name": "Sri Thirumala Sadashiv",
+    "designation": "SA(Social)",
+    "qualifications": "M.A(History), B.Ed.",
+    "username": "sadashiv",
+    "password": "teacher123",
+    "subjects": "Social Studies"
+  },
+  {
+    "id": "TCH004",
+    "name": "Sri Nalla Rajaiah",
+    "designation": "SA(Maths)",
+    "qualifications": "M.Sc(Maths), B.Ed.",
+    "username": "rajaiah",
+    "password": "teacher123",
+    "subjects": "Mathematics"
+  },
+  {
+    "id": "TCH005",
+    "name": "Sri Mittapally Rajashekar",
+    "designation": "SA(Bio-Science)",
+    "qualifications": "M.Sc.(Botony), B.Ed.",
+    "username": "rajashekar",
+    "password": "teacher123",
+    "subjects": "Biology"
+  },
+  {
+    "id": "TCH006",
+    "name": "Srimati Guddeti Sumalatha",
+    "designation": "SA(English)",
+    "qualifications": "M.A(English), B.Ed.",
+    "username": "sumalatha",
+    "password": "teacher123",
+    "subjects": "English"
+  },
+  {
+    "id": "TCH007",
+    "name": "Sri Mutyapu Hariprasad",
+    "designation": "SA(Physical Science)",
+    "qualifications": "M.Sc.(Maths), B.Ed.",
+    "username": "hariprasad",
+    "password": "teacher123",
+    "subjects": "Physics"
+  },
+  {
+    "id": "TCH008",
+    "name": "Srimati Mothukuri Krishnaveni",
+    "designation": "SA(Telugu)",
+    "qualifications": "M.A(Telugu), B.Ed.",
+    "username": "krishnaveni",
+    "password": "teacher123",
+    "subjects": "Telugu"
+  },
+  {
+    "id": "TCH009",
+    "name": "Srimati Takur Sujatha Kumari",
+    "designation": "L.P(Hindi)",
+    "qualifications": "B.A., B.Ed., H.P.T",
+    "username": "sujatha",
+    "password": "teacher123",
+    "subjects": "Hindi"
+  },
+  {
+    "id": "TCH010",
+    "name": "Sri Gouti Ravindhar",
+    "designation": "P.E.T",
+    "qualifications": "B.Com., MP.Ed., M.B.A",
+    "username": "gouti",
+    "password": "teacher123",
+    "subjects": "Physical Education"
+  },
+  {
+    "id": "TCH011",
+    "name": "Srimati Rafeedha Begum",
+    "designation": "PTI(Craft)",
+    "qualifications": "B.A, TTTC",
+    "username": "rafeedha",
+    "password": "teacher123",
+    "subjects": "Crafts"
+  }
+]
